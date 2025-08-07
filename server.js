@@ -1,61 +1,44 @@
-const WebSocket = require("ws");
 const express = require("express");
 const http = require("http");
+const WebSocket = require("ws");
 const cors = require("cors");
 
 const app = express();
-app.use(cors());
-
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-let listeners = [];
+app.use(cors());
+app.use(express.static("public")); // if needed for frontend hosting
+
+let broadcaster = null;
 
 wss.on("connection", (ws) => {
-  ws.isAlive = true;
+  console.log("🔌 New client connected");
 
-  // For keep-alive check
-  ws.on("pong", () => {
-    ws.isAlive = true;
-  });
-
-  // First message determines role
-  ws.once("message", (message) => {
-    const type = message.toString();
-
-    if (type === "listener") {
-      listeners.push(ws);
+  ws.on("message", (message) => {
+    if (message.toString() === "broadcaster") {
+      console.log("🎙️ Mic broadcaster connected");
+      broadcaster = ws;
     } else {
-      // Broadcaster sending audio
-      ws.on("message", (audioChunk) => {
-        listeners.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(audioChunk);
-          }
-        });
+      // forward to all except sender
+      wss.clients.forEach((client) => {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          client.send(message);
+        }
       });
     }
   });
 
   ws.on("close", () => {
-    listeners = listeners.filter((client) => client !== ws);
+    console.log("❌ Client disconnected");
+    if (ws === broadcaster) {
+      console.log("🎤 Mic broadcaster disconnected");
+      broadcaster = null;
+    }
   });
-});
-
-// Health check for open connections (every 30s)
-setInterval(() => {
-  wss.clients.forEach((ws) => {
-    if (!ws.isAlive) return ws.terminate();
-    ws.isAlive = false;
-    ws.ping();
-  });
-}, 30000);
-
-app.get("/", (req, res) => {
-  res.send("🔊 Voice Stream Server is Running");
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✅ Voice Server running on port ${PORT}`);
+  console.log(`✅ Voice stream server running on port ${PORT}`);
 });
