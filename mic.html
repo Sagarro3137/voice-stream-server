@@ -1,1 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🎙️ Mic Broadcasting</title>
+</head>
+<body>
+  <h2>🎙️ Broadcasting Voice</h2>
+  <button onclick="startBroadcast()">Start Broadcasting</button>
 
+  <script>
+    let socket;
+    let mediaRecorder;
+
+    async function startBroadcast() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      socket = new WebSocket("wss://voice-stream-server2.onrender.com");
+      socket.binaryType = "arraybuffer";
+
+      socket.onopen = () => {
+        console.log("WebSocket connected (Broadcaster)");
+        // Do not send "listener" message
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+            e.data.arrayBuffer().then(buffer => socket.send(buffer));
+          }
+        };
+        mediaRecorder.start(250);
+      };
+
+      socket.onerror = (err) => {
+        console.error("WebSocket error", err);
+      };
+    }
+  </script>
+</body>
+</html>
