@@ -14,32 +14,35 @@ let listeners = [];
 wss.on("connection", (ws) => {
   ws.isAlive = true;
 
+  // For keep-alive check
   ws.on("pong", () => {
     ws.isAlive = true;
   });
 
-  ws.on("message", (message) => {
-    // Voice message from broadcaster
-    listeners.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(message);
-      }
-    });
+  // First message determines role
+  ws.once("message", (message) => {
+    const type = message.toString();
+
+    if (type === "listener") {
+      listeners.push(ws);
+    } else {
+      // Broadcaster sending audio
+      ws.on("message", (audioChunk) => {
+        listeners.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(audioChunk);
+          }
+        });
+      });
+    }
   });
 
   ws.on("close", () => {
     listeners = listeners.filter((client) => client !== ws);
   });
-
-  // First message will determine if it's listener or sender
-  ws.once("message", (message) => {
-    if (message.toString() === "listener") {
-      listeners.push(ws);
-    }
-  });
 });
 
-// Keep connection alive
+// Health check for open connections (every 30s)
 setInterval(() => {
   wss.clients.forEach((ws) => {
     if (!ws.isAlive) return ws.terminate();
@@ -49,10 +52,10 @@ setInterval(() => {
 }, 30000);
 
 app.get("/", (req, res) => {
-  res.send("🔊 Voice Stream Server Running");
+  res.send("🔊 Voice Stream Server is Running");
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+  console.log(`✅ Voice Server running on port ${PORT}`);
 });
