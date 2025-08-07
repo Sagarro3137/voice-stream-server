@@ -1,36 +1,33 @@
-const express = require('express');
-const http = require('http');
-const { WebSocketServer } = require('ws');
-const path = require('path');
+// ✅ Final working server.js
+const WebSocket = require("ws");
+const http = require("http");
+const server = http.createServer();
+const wss = new WebSocket.Server({ server });
 
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+let listeners = [];
 
-let clients = new Set();
+wss.on("connection", (ws) => {
+  console.log("🔗 New connection");
 
-wss.on('connection', (ws) => {
-  console.log('🔌 New WebSocket connection');
-  clients.add(ws);
-
-  ws.on('message', (data) => {
-    // Send to all others
-    for (let client of clients) {
-      if (client !== ws && client.readyState === 1) {
-        client.send(data);
+  ws.on("message", (message) => {
+    // If broadcaster sending audio
+    listeners.forEach(listener => {
+      if (listener.readyState === WebSocket.OPEN) {
+        listener.send(message);
       }
-    }
+    });
   });
 
-  ws.on('close', () => {
-    clients.delete(ws);
-    console.log('❌ WebSocket disconnected');
+  ws.on("close", () => {
+    listeners = listeners.filter(l => l !== ws);
+    console.log("❌ Disconnected");
   });
+
+  // Add to listener list
+  listeners.push(ws);
 });
-
-app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server listening on port ${PORT}`);
+  console.log(`✅ Server listening on port ${PORT}`);
 });
