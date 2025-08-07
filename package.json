@@ -1,6 +1,7 @@
 {
-  "name": "voice-stream",
+  "name": "voice-stream-modern",
   "version": "1.0.0",
+  "description": "Modern low-latency voice streaming server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
