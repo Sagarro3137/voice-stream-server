@@ -1,13 +1,8 @@
 {
-  "name": "voice-stream-modern",
+  "name": "live-audio-broadcast",
   "version": "1.0.0",
-  "description": "Modern low-latency voice streaming server",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "main": "signaling-server.js",
   "dependencies": {
-    "express": "^4.18.2",
-    "ws": "^8.13.0"
+    "socket.io": "^4.0.0"
   }
 }
